@@ -6,7 +6,8 @@
  * @{
  *
  * @file       pios_board.c
- * @author     Tau Labs, http://taulabs.org, Copyright (C) 2012-2014
+ * @author     dRonin, http://dronin.org Copyright (C) 2015
+ * @author     Tau Labs, http://taulabs.org, Copyright (C) 2012-2015
  * @brief      The board specific initialization routines
  * @see        The GNU Public License (GPL) Version 3
  *
@@ -48,13 +49,14 @@
 /**
  * Configuration for the MS5611 chip
  */
-#if defined(PIOS_INCLUDE_MS5611)
-#include "pios_ms5611_priv.h"
-static const struct pios_ms5611_cfg pios_ms5611_cfg = {
-	.oversampling = MS5611_OSR_1024,
+#if defined(PIOS_INCLUDE_MS5XXX)
+#include "pios_ms5xxx_priv.h"
+static const struct pios_ms5xxx_cfg pios_ms5xxx_cfg = {
+	.oversampling = MS5XXX_OSR_1024,
 	.temperature_interleaving = 1,
+	.pios_ms5xxx_model = PIOS_MS5M_MS5611,
 };
-#endif /* PIOS_INCLUDE_MS5611 */
+#endif /* PIOS_INCLUDE_MS5XXX */
 
 /**
  * Configuration for the MPU6050 chip
@@ -177,7 +179,6 @@ uintptr_t pios_com_debug_id;
 #endif	/* PIOS_INCLUDE_DEBUG_CONSOLE */
 
 uintptr_t pios_com_aux_id;
-uintptr_t pios_com_telem_rf_id;
 uintptr_t pios_com_can_id;
 uintptr_t pios_uavo_settings_fs_id;
 uintptr_t pios_waypoints_settings_fs_id;
@@ -703,9 +704,9 @@ void PIOS_Board_Init(void)
 	//I2C is slow, sensor init as well, reset watchdog to prevent reset here
 	PIOS_WDG_Clear();
 
-#if defined(PIOS_INCLUDE_MS5611)
-	PIOS_MS5611_Init(&pios_ms5611_cfg, pios_i2c_internal_id);
-	if (PIOS_MS5611_Test() != 0)
+#if defined(PIOS_INCLUDE_MS5XXX)
+	PIOS_MS5XXX_I2C_Init(pios_i2c_internal_id, MS5XXX_I2C_ADDR_0x77, &pios_ms5xxx_cfg);
+	if (PIOS_MS5XXX_Test() != 0)
 		panic(4);
 #endif
 
@@ -714,7 +715,7 @@ void PIOS_Board_Init(void)
 #endif
 
 	/* Make sure we have at least one telemetry link configured or else fail initialization */
-	PIOS_Assert(pios_com_telem_rf_id || pios_com_telem_usb_id);
+	PIOS_Assert(pios_com_telem_serial_id || pios_com_telem_usb_id);
 }
 
 /**

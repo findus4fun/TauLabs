@@ -32,6 +32,8 @@ include $(BOARD_INFO_DIR)/board-info.mk
 # @optbrief Set to YES to compile for debugging
 DEBUG ?= NO
 
+RTOS ?= FREERTOS
+
 # @optbrief Include objects that are just nice information to show
 STACK_DIAGNOSTICS ?= NO
 MIXERSTATUS_DIAGNOSTICS ?= NO
@@ -191,7 +193,7 @@ SRC += $(PIOSCOMMON)/pios_crc.c
 SRC += $(PIOSCOMMON)/pios_dsm.c
 SRC += $(PIOSCOMMON)/pios_flashfs_logfs.c
 SRC += $(PIOSCOMMON)/pios_flash_jedec.c
-SRC += $(PIOSCOMMON)/pios_ms5611.c
+SRC += $(PIOSCOMMON)/pios_ms5xxx.c
 SRC += $(PIOSCOMMON)/pios_mpu6050.c
 SRC += $(PIOSCOMMON)/pios_com.c
 SRC += $(PIOSCOMMON)/pios_rcvr.c
@@ -215,6 +217,7 @@ SRC += $(PIOSCOMMON)/pios_board_info.c
 SRC += $(FLIGHTLIB)/fifo_buffer.c
 SRC += $(FLIGHTLIB)/taskmonitor.c
 SRC += $(FLIGHTLIB)/sanitycheck.c
+SRC += $(FLIGHTLIB)/msplib.c
 SRC += $(MATHLIB)/coordinate_conversions.c
 SRC += $(MATHLIB)/misc_math.c
 SRC += $(MATHLIB)/pid.c
@@ -244,13 +247,9 @@ SRC += $(STMSPDSRCDIR)/stm32f10x_iwdg.c
 SRC += $(STMSPDSRCDIR)/stm32f10x_dbgmcu.c
 SRC += $(STMSPDSRCDIR)/misc.c
 
-## RTOS
-SRC += $(RTOSSRCDIR)/list.c
-SRC += $(RTOSSRCDIR)/queue.c
-SRC += $(RTOSSRCDIR)/tasks.c
-
 ## RTOS Portable
 SRC += $(RTOSPORTDIR)/portable/GCC/ARM_CM3/port.c
+EXTRAINCDIRS += $(RTOSPORTDIR)/portable/GCC/ARM_CM3
 
 ## PyMite files
 #SRC += $(wildcard ${PYMITEVM}/*.c)
@@ -315,9 +314,7 @@ EXTRAINCDIRS  += $(STMSPDINCDIR)
 EXTRAINCDIRS  += $(STMUSBINCDIR)
 EXTRAINCDIRS  += $(CMSISDIR)
 EXTRAINCDIRS  += $(MSDDIR)
-EXTRAINCDIRS  += $(RTOSINCDIR)
 EXTRAINCDIRS  += $(APPLIBDIR)
-EXTRAINCDIRS  += $(RTOSPORTDIR)/portable/GCC/ARM_CM3
 EXTRAINCDIRS  += $(AHRSBOOTLOADERINC)
 EXTRAINCDIRS  += $(PYMITEINC)
 EXTRAINCDIRS  += $(MAVLINKINC)
@@ -513,5 +510,4 @@ LDFLAGS += -Wl,--fatal-warnings
 LDFLAGS += -T$(LINKERSCRIPTPATH)/link_$(BOARD)_memory.ld
 LDFLAGS += -T$(LINKERSCRIPTPATH)/link_$(BOARD)_sections.ld
 
-include ./UAVObjects.inc
 include $(MAKE_INC_DIR)/firmware-common.mk

@@ -31,7 +31,6 @@
 #define PIOS_CONFIG_H
 
 /* Major features */
-#define PIOS_INCLUDE_CHIBIOS
 #define PIOS_INCLUDE_BL_HELPER
 
 /* Enable/Disable PiOS Modules */
@@ -59,7 +58,7 @@
 #define PIOS_INCLUDE_HPWM
 
 /* Select the sensors to include */
-#define PIOS_INCLUDE_MS5611
+#define PIOS_INCLUDE_MS5XXX
 //#define PIOS_INCLUDE_ETASV3
 #define PIOS_INCLUDE_MPXV5004
 #define PIOS_INCLUDE_MPXV7002

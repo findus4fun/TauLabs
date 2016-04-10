@@ -32,6 +32,8 @@ include $(BOARD_INFO_DIR)/board-info.mk
 # @optbrief Set to YES to compile for debugging
 DEBUG ?= NO
 
+RTOS ?= FREERTOS
+
 # @optbrief Include objects that are just nice information to show
 STACK_DIAGNOSTICS ?= NO
 MIXERSTATUS_DIAGNOSTICS ?= NO
@@ -140,9 +142,6 @@ STMUSBSRCDIR = $(STMUSBDIR)/src
 STMUSBINCDIR = $(STMUSBDIR)/inc
 CMSISDIR  = $(STMLIBDIR)/CMSIS/Core/CM3
 MSDDIR  = $(APPLIBDIR)/msd
-RTOSDIR = $(PIOSCOMMON)/Libraries/FreeRTOS
-RTOSSRCDIR = $(RTOSDIR)/Source
-RTOSINCDIR = $(RTOSSRCDIR)/include
 RTOSPORTDIR = $(APPLIBDIR)/FreeRTOS/Source
 DOXYGENDIR = ../Doc/Doxygen
 MAVLINKINC  = $(FLIGHTLIB)/mavlink/v1.0/common
@@ -162,6 +161,8 @@ SRC += $(FLIGHTLIB)/alarms.c
 SRC += $(OPUAVTALK)/uavtalk.c
 SRC += $(OPUAVOBJ)/uavobjectmanager.c
 SRC += $(OPUAVOBJ)/eventdispatcher.c
+SRC += $(FLIGHTLIB)/msplib.c
+
 else
 ## TESTCODE
 SRC += $(OPTESTS)/test_common.c
@@ -275,13 +276,9 @@ SRC += $(STMUSBSRCDIR)/usb_mem.c
 SRC += $(STMUSBSRCDIR)/usb_regs.c
 SRC += $(STMUSBSRCDIR)/usb_sil.c
 
-## RTOS
-SRC += $(RTOSSRCDIR)/list.c
-SRC += $(RTOSSRCDIR)/queue.c
-SRC += $(RTOSSRCDIR)/tasks.c
-
 ## RTOS Portable
 SRC += $(RTOSPORTDIR)/portable/GCC/ARM_CM3/port.c
+EXTRAINCDIRS += $(RTOSPORTDIR)/portable/GCC/ARM_CM3
 
 # List C source files here which must be compiled in ARM-Mode (no -mthumb).
 # use file-extension c for "c-only"-files
@@ -330,9 +327,7 @@ EXTRAINCDIRS  += $(STMSPDINCDIR)
 EXTRAINCDIRS  += $(STMUSBINCDIR)
 EXTRAINCDIRS  += $(CMSISDIR)
 EXTRAINCDIRS  += $(MSDDIR)
-EXTRAINCDIRS  += $(RTOSINCDIR)
 EXTRAINCDIRS  += $(APPLIBDIR)
-EXTRAINCDIRS  += $(RTOSPORTDIR)/portable/GCC/ARM_CM3
 EXTRAINCDIRS  += $(AHRSBOOTLOADERINC)
 EXTRAINCDIRS  += $(MAVLINKINC)
 
@@ -517,6 +512,5 @@ LDFLAGS += -Wl,--fatal-warnings
 LDFLAGS += -T$(LINKERSCRIPTPATH)/link_$(BOARD)_memory.ld
 LDFLAGS += -T$(LINKERSCRIPTPATH)/link_$(BOARD)_sections.ld
 
-include ./UAVObjects.inc
 include $(MAKE_INC_DIR)/firmware-common.mk
 

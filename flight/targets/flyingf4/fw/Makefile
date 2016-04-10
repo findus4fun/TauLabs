@@ -31,6 +31,7 @@ include $(BOARD_INFO_DIR)/board-info.mk
 # Set to YES for debugging
 DEBUG ?= NO
 ERASE_FLASH ?= NO
+RTOS ?= FREERTOS
 
 # List of modules to include
 MODULES = Sensors
@@ -63,6 +64,7 @@ OPTMODULES += Geofence
 OPTMODULES += FlightStats
 
 # Paths
+TARGET_ARCHITECTURE = STM32F4xx
 OPUAVTALKINC = $(OPUAVTALK)/inc
 OPUAVOBJINC = $(OPUAVOBJ)/inc
 PIOSINC = $(PIOS)/inc
@@ -71,10 +73,10 @@ MATHLIB = $(FLIGHTLIB)/math
 MATHLIBINC = $(FLIGHTLIB)/math
 RSCODE = $(FLIGHTLIB)/rscode
 RSCODEINC = $(FLIGHTLIB)/rscode
-PIOSSTM32F4XX = $(PIOS)/STM32F4xx
+PIOSSTM32FXXX = $(PIOS)/$(TARGET_ARCHITECTURE)
 PIOSCOMMON = $(PIOS)/Common
 PIOSCOMMONLIB = $(PIOSCOMMON)/Libraries
-APPLIBDIR = $(PIOSSTM32F4XX)/Libraries
+APPLIBDIR = $(PIOSSTM32FXXX)/Libraries
 STMLIBDIR = $(APPLIBDIR)
 STMSPDDIR = $(STMLIBDIR)/STM32F4xx_StdPeriph_Driver
 STMSPDSRCDIR = $(STMSPDDIR)/src
@@ -85,7 +87,6 @@ OPUAVOBJINC = $(OPUAVOBJ)/inc
 MAVLINKINC = $(FLIGHTLIB)/mavlink/v1.0/common
 
 # optional component libraries
-include $(PIOSCOMMONLIB)/FreeRTOS/library.mk
 include $(FLIGHTLIB)/CMSIS3/DSP_Lib/library.mk
 
 
@@ -125,15 +126,12 @@ SRC += $(MATHLIB)/misc_math.c
 SRC += $(MATHLIB)/pid.c
 SRC += $(MATHLIB)/atmospheric_math.c
 
-## PIOS Hardware (STM32F4xx)
-include $(PIOS)/STM32F4xx/library_fw.mk
-
 ## PIOS Hardware (Common)
 SRC += $(PIOSCOMMON)/pios_delay.c
 SRC += $(PIOSCOMMON)/pios_mpu6050.c
 SRC += $(PIOSCOMMON)/pios_gcsrcvr.c
 SRC += $(PIOSCOMMON)/pios_hmc5883.c
-SRC += $(PIOSCOMMON)/pios_ms5611.c
+SRC += $(PIOSCOMMON)/pios_ms5xxx.c
 SRC += $(PIOSCOMMON)/pios_etasv3.c
 SRC += $(PIOSCOMMON)/pios_mpxv5004.c
 SRC += $(PIOSCOMMON)/pios_mpxv7002.c
@@ -176,7 +174,7 @@ EXTRAINCDIRS += $(OPUAVSYNTHDIR)
 EXTRAINCDIRS += $(FLIGHTLIBINC)
 EXTRAINCDIRS += $(MATHLIBINC)
 EXTRAINCDIRS += $(RSCODEINC)
-EXTRAINCDIRS += $(PIOSSTM32F4XX)
+EXTRAINCDIRS += $(PIOSSTM32FXXX)
 EXTRAINCDIRS += $(PIOSCOMMON)
 EXTRAINCDIRS += $(BOARD_INFO_DIR)
 EXTRAINCDIRS += $(STMSPDINCDIR)
@@ -202,7 +200,7 @@ EXTRA_LIBDIRS =
 EXTRA_LIBS =
 
 # Path to Linker-Scripts
-LINKERSCRIPTPATH = $(PIOSSTM32F4XX)
+LINKERSCRIPTPATH = $(PIOSSTM32FXXX)
 
 # Optimization level, can be [0, 1, 2, 3, s].
 # 0 = turn off optimization. s = optimize for size.
@@ -325,9 +323,5 @@ LDFLAGS += -Wl,--fatal-warnings
 
 # Linker scripts
 LDFLAGS += $(addprefix -T,$(LINKER_SCRIPTS_APP))
-
-include ./UAVObjects.inc
-
-UAVO_NAV = YES
 
 include $(MAKE_INC_DIR)/firmware-common.mk

@@ -6,7 +6,7 @@
  * @{
  *
  * @file       pios_board.c 
- * @author     Tau Labs, http://taulabs.org, Copyright (C) 2012-2015
+ * @author     Tau Labs, http://taulabs.org, Copyright (C) 2012-2016
  * @brief      Board initialization file
  * @see        The GNU Public License (GPL) Version 3
  * 
@@ -45,6 +45,8 @@
 #include "modulesettings.h"
 #include <rfm22bstatus.h>
 #include <rfm22breceiver.h>
+#include <pios_dacbeep_priv.h>
+#include <pios_fskdac_priv.h>
 #include <pios_rfm22b_rcvr_priv.h>
 #include <pios_openlrs_rcvr_priv.h>
 
@@ -55,13 +57,14 @@
 /**
  * Configuration for the MS5611 chip
  */
-#if defined(PIOS_INCLUDE_MS5611)
-#include "pios_ms5611_priv.h"
-static const struct pios_ms5611_cfg pios_ms5611_cfg = {
-	.oversampling = MS5611_OSR_1024,
+#if defined(PIOS_INCLUDE_MS5XXX)
+#include "pios_ms5xxx_priv.h"
+static const struct pios_ms5xxx_cfg pios_ms5xxx_cfg = {
+	.oversampling = MS5XXX_OSR_1024,
 	.temperature_interleaving = 1,
+	.pios_ms5xxx_model = PIOS_MS5M_MS5611,
 };
-#endif /* PIOS_INCLUDE_MS5611 */
+#endif /* PIOS_INCLUDE_MS5XXX */
 
 
 /**
@@ -130,6 +133,8 @@ static const struct pios_hmc5883_cfg pios_hmc5883_external_cfg = {
 #define PIOS_COM_CAN_RX_BUF_LEN 256
 #define PIOS_COM_CAN_TX_BUF_LEN 256
 
+#define PIOS_COM_FSKDAC_BUF_LEN 19
+
 uintptr_t pios_com_spiflash_logging_id;
 uintptr_t pios_com_can_id;
 uintptr_t pios_internal_adc_id = 0;
@@ -139,6 +144,8 @@ uintptr_t pios_waypoints_settings_fs_id;
 uintptr_t pios_can_id;
 
 uintptr_t streamfs_id;
+
+uintptr_t dacbeep_handle;
 
 /**
  * Indicate a target-specific error code when a component fails to initialize
@@ -151,33 +158,142 @@ static void panic(int32_t code) {
 	PIOS_HAL_Panic(PIOS_LED_ALARM, code);
 }
 
+/**
+ * Set the external pins high that go to the VTX module
+ * and set the FPV frequency it transmits at
+ */
 void set_vtx_channel(HwSparky2VTX_ChOptions channel)
 {
 	uint8_t chan = 0;
+	uint8_t band = 0xFF; // Set to "A" band
+
 	switch (channel) {
-	case HWSPARKY2_VTX_CH_1:
+	case HWSPARKY2_VTX_CH_BOSCAMACH15725:
 		chan = 0;
-		break;
-	case HWSPARKY2_VTX_CH_2:
+		band = 0;
+	case HWSPARKY2_VTX_CH_BOSCAMACH25745:
 		chan = 1;
+		band = 0;
 		break;
-	case HWSPARKY2_VTX_CH_3:
+	case HWSPARKY2_VTX_CH_BOSCAMACH35765:
 		chan = 2;
+		band = 0;
 		break;
-	case HWSPARKY2_VTX_CH_4:
+	case HWSPARKY2_VTX_CH_BOSCAMACH45785:
 		chan = 3;
+		band = 0;
 		break;
-	case HWSPARKY2_VTX_CH_5:
+	case HWSPARKY2_VTX_CH_BOSCAMACH55805:
 		chan = 4;
+		band = 0;
 		break;
-	case HWSPARKY2_VTX_CH_6:
+	case HWSPARKY2_VTX_CH_BOSCAMACH65825:
 		chan = 5;
+		band = 0;
 		break;
-	case HWSPARKY2_VTX_CH_7:
+	case HWSPARKY2_VTX_CH_BOSCAMACH75845:
 		chan = 6;
+		band = 0;
 		break;
-	case HWSPARKY2_VTX_CH_8:
+	case HWSPARKY2_VTX_CH_BOSCAMACH85865:
 		chan = 7;
+		band = 0;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH15733:
+		chan = 0;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH25752:
+		chan = 1;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH35771:
+		chan = 2;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH45790:
+		chan = 3;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH55809:
+		chan = 4;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH65828:
+		chan = 5;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH75847:
+		chan = 6;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMBCH85866:
+		chan = 7;
+		band = 1;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH15705:
+		chan = 0;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH25685:
+		chan = 1;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH35665:
+		chan = 2;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH45645:
+		chan = 3;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH55885:
+		chan = 4;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH65905:
+		chan = 5;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH75925:
+		chan = 6;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_BOSCAMECH85945:
+		chan = 7;
+		band = 2;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH15740:
+		chan = 0;
+		band = 3;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH25760:
+		chan = 1;
+		band = 3;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH35780:
+		chan = 2;
+		band = 3;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH45800:
+		chan = 3;
+		band = 3;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH55820:
+		chan = 4;
+		band = 3;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH65840:
+		chan = 5;
+		band = 3;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH75860:
+		chan = 6;
+		band = 3;
+		break;
+	case HWSPARKY2_VTX_CH_AIRWAVECH85860:
+		chan = 7;
+		band = 3;
 		break;
 	}
 
@@ -210,6 +326,23 @@ void set_vtx_channel(HwSparky2VTX_ChOptions channel)
 		GPIO_SetBits(GPIOB, GPIO_Pin_12);
 	} else {
 		GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+	}
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	if (band & 0x01) {
+		GPIO_SetBits(GPIOA, GPIO_Pin_9);
+	} else {
+		GPIO_ResetBits(GPIOA, GPIO_Pin_9);
+	}
+
+	if (band & 0x02) {
+		GPIO_SetBits(GPIOA, GPIO_Pin_10);
+	} else {
+		GPIO_ResetBits(GPIOA, GPIO_Pin_10);
 	}
 }
 
@@ -539,17 +672,6 @@ void PIOS_Board_Init(void) {
 	if(get_use_can(bdinfo->board_rev)) {
 		if (PIOS_CAN_Init(&pios_can_id, &pios_can_cfg) != 0)
 			panic(6);
-
-		uint8_t * rx_buffer = (uint8_t *) PIOS_malloc(PIOS_COM_CAN_RX_BUF_LEN);
-		uint8_t * tx_buffer = (uint8_t *) PIOS_malloc(PIOS_COM_CAN_TX_BUF_LEN);
-		PIOS_Assert(rx_buffer);
-		PIOS_Assert(tx_buffer);
-		if (PIOS_COM_Init(&pios_com_can_id, &pios_can_com_driver, pios_can_id,
-		                  rx_buffer, PIOS_COM_CAN_RX_BUF_LEN,
-		                  tx_buffer, PIOS_COM_CAN_TX_BUF_LEN))
-			panic(6);
-
-		/* pios_com_bridge_id = pios_com_can_id; */
 	}
 #endif
 
@@ -557,19 +679,56 @@ void PIOS_Board_Init(void) {
 
 	PIOS_SENSORS_Init();
 
+	uint8_t dac_mode;
+	HwSparky2AdcDacGet(&dac_mode);
+	struct pios_internal_adc_cfg *adc_cfg = &pios_adc_withoutdac_cfg;
+
+	// Select what the ADC or DAC is used for
+	switch(dac_mode) {
+	case HWSPARKY2_ADCDAC_ADC:
+		adc_cfg = &pios_adc_withdac_cfg;
+		break;
+	case HWSPARKY2_ADCDAC_BEEP:
+#if defined(PIOS_INCLUDE_DAC_BEEPS)
+	{
+		uintptr_t dacbeep_id;
+		PIOS_DACBEEP_Init(&dacbeep_id);
+		dacbeep_handle = dacbeep_id;
+	}
+#endif /* PIOS_INCLUDE_DAC_BEEPS */
+		break;
+	case HWSPARKY2_ADCDAC_FSKTELEM:
+#if defined(PIOS_INCLUDE_FSK)
+	{
+		uintptr_t fskdac_id;
+		PIOS_FSKDAC_Init(&fskdac_id);
+
+		uintptr_t fskdac_com_id;
+		uint8_t * tx_buffer = (uint8_t *) PIOS_malloc(PIOS_COM_FSKDAC_BUF_LEN);
+		PIOS_Assert(tx_buffer);
+		if (PIOS_COM_Init(&fskdac_com_id, &pios_fskdac_com_driver, fskdac_id,
+		                  NULL, 0,
+		                  tx_buffer, PIOS_COM_FSKDAC_BUF_LEN))
+			panic(6);
+
+		uint8_t baud = MODULESETTINGS_LIGHTTELEMETRYSPEED_1200;
+		ModuleSettingsLightTelemetrySpeedSet(&baud);
+		pios_com_lighttelemetry_id = fskdac_com_id; // send from light telemetry when enabled
+	}
+#endif /* PIOS_INCLUDE_FSK */
+		break;
+	}
+
 #if defined(PIOS_INCLUDE_ADC)
 	uint32_t internal_adc_id;
-	PIOS_INTERNAL_ADC_Init(&internal_adc_id, &pios_adc_cfg);
+	PIOS_INTERNAL_ADC_Init(&internal_adc_id, adc_cfg);
 	PIOS_ADC_Init(&pios_internal_adc_id, &pios_internal_adc_driver, internal_adc_id);
- 
-        // configure the pullup for PA8 (inhibit pullups from current/sonar shared pin)
-        GPIO_Init(pios_current_sonar_pin.gpio, &pios_current_sonar_pin.init);
 #endif
 
-#if defined(PIOS_INCLUDE_MS5611)
-	if (PIOS_MS5611_Init(&pios_ms5611_cfg, pios_i2c_mag_pressure_adapter_id) != 0)
+#if defined(PIOS_INCLUDE_MS5XXX)
+	if (PIOS_MS5XXX_I2C_Init(pios_i2c_mag_pressure_adapter_id, MS5XXX_I2C_ADDR_0x77, &pios_ms5xxx_cfg) != 0)
 		panic(4);
-	if (PIOS_MS5611_Test() != 0)
+	if (PIOS_MS5XXX_Test() != 0)
 		panic(4);
 #endif
 
